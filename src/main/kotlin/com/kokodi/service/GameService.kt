@@ -7,6 +7,7 @@ import com.kokodi.repository.CardRepository
 import com.kokodi.repository.GameSessionRepository
 import com.kokodi.repository.UserRepository
 import github.nikandpro.com.kokodi.domain.ActionType
+import org.apache.coyote.BadRequestException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -71,19 +72,19 @@ class GameService(
     @Transactional
     fun startGame(gameId: Long, username: String): GameSession {
         val gameSession = gameSessionRepository.findById(gameId)
-            .orElseThrow { GameException("Game not found") }
+            .orElseThrow { BadRequestException("Game not found") }
 
         if (gameSession.status != GameStatus.WAITING_FOR_PLAYERS) {
-            throw GameException("Game is not waiting for players")
+            throw BadRequestException("Game is not waiting for players")
         }
 
         if (gameSession.players.size < 2) {
-            throw GameException("Not enough players")
+            throw BadRequestException("Not enough players")
         }
 
         val creator = gameSession.players.first()
         if (creator.user.username != username) {
-            throw GameException("Only game creator can start the game")
+            throw BadRequestException("Only game creator can start the game")
         }
 
         gameSession.status = GameStatus.IN_PROGRESS
@@ -113,6 +114,7 @@ class GameService(
 
         if (currentPlayer.isBlocked) {
             currentPlayer.isBlocked = false
+            rotateToNextPlayer(gameSession)
             return Turn(
                 gameSession = gameSession,
                 player = currentPlayer,
@@ -124,7 +126,7 @@ class GameService(
         val topCard = gameSession.deck.firstOrNull { !it.isPlayed }
             ?: throw GameException("No cards left in deck")
 
-        val turn = try {
+        try {
             when (topCard.card) {
                 is PointsCard -> handlePointsCard(gameSession, currentPlayer, topCard)
                 is ActionCard -> handleActionCard(gameSession, currentPlayer, topCard, turnRequest)
@@ -138,6 +140,8 @@ class GameService(
 
         if (currentPlayer.score >= 30) {
             gameSession.status = GameStatus.FINISHED
+        } else {
+            rotateToNextPlayer(gameSession)
         }
 
         return gameSessionRepository.save(gameSession).turns.last()
@@ -261,5 +265,10 @@ class GameService(
             targetPlayer = gameSession.players.find { it.id == turnRequest.targetPlayerId },
             pointsChange = pointsChange
         ).also { gameSession.turns.add(it) }
+    }
+
+    private fun rotateToNextPlayer(gameSession: GameSession) {
+        gameSession.currentPlayerIndex = gameSession.nextPlayerIndex
+        gameSession.nextPlayerIndex = (gameSession.nextPlayerIndex + 1) % gameSession.players.size
     }
 } 

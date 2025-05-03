@@ -68,7 +68,6 @@ data class TurnResponse(
 
 data class CardResponse(
     val id: Long,
-    val name: String,
     val value: Int,
     val type: String,
     val actionType: String?
@@ -78,7 +77,6 @@ data class CardResponse(
             return when (card) {
                 is PointsCard -> CardResponse(
                     id = card.id,
-                    name = card.name,
                     value = card.value,
                     type = "POINTS",
                     actionType = null
@@ -86,7 +84,6 @@ data class CardResponse(
 
                 is ActionCard -> CardResponse(
                     id = card.id,
-                    name = card.name,
                     value = card.value,
                     type = "ACTION",
                     actionType = card.actionType.name

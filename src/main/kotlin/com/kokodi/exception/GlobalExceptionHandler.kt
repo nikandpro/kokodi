@@ -1,5 +1,6 @@
 package com.kokodi.exception
 
+import org.apache.coyote.BadRequestException
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -18,7 +19,12 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun handleGenericException(ex: Exception): ResponseEntity<ErrorResponse> {
-        return ResponseEntity.internalServerError().body(ErrorResponse("Internal server error"))
+        return ResponseEntity.internalServerError().body(ErrorResponse(ex.message ?: "Internal server error"))
+    }
+
+    @ExceptionHandler(BadRequestException::class)
+    fun handleBadRequestException(ex: BadRequestException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.badRequest().body(ErrorResponse(ex.message ?: "Bad request"))
     }
 }
 
