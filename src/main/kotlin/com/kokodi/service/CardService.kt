@@ -15,45 +15,57 @@ class CardService(
     fun initializeDeck(gameSession: GameSession) {
         val cards = mutableListOf<Card>()
 
-
         repeat(5) {
-            cards.add(PointsCard("Small Points", 2))
+            val card = PointsCard("Small Points", 2)
+            card.gameSessionId = gameSession.id
+            cards.add(card)
         }
         repeat(3) {
-            cards.add(PointsCard("Medium Points", 5))
-            cards.add(ActionCard("Block", 1, ActionType.BLOCK))
+            val card = PointsCard("Medium Points", 5)
+            card.gameSessionId = gameSession.id
+            cards.add(card)
         }
         repeat(2) {
-            cards.add(ActionCard("Steal", 3, ActionType.STEAL))
-            cards.add(ActionCard("Double Down", 2, ActionType.DOUBLE_DOWN))
-            cards.add(PointsCard("Large Points", 8))
+            val card = PointsCard("Large Points", 8)
+            card.gameSessionId = gameSession.id
+            cards.add(card)
         }
 
+        repeat(3) {
+            val card = ActionCard("Block", 1, ActionType.BLOCK)
+            card.gameSessionId = gameSession.id
+            cards.add(card)
+        }
+        repeat(2) {
+            val card = ActionCard("Steal", 3, ActionType.STEAL)
+            card.gameSessionId = gameSession.id
+            cards.add(card)
+        }
+        repeat(2) {
+            val card = ActionCard("Double Down", 2, ActionType.DOUBLE_DOWN)
+            card.gameSessionId = gameSession.id
+            cards.add(card)
+        }
 
         cards.shuffle()
 
-        cards.forEachIndexed { index, card ->
+        cards.forEach { card ->
             val savedCard = cardRepository.save(card)
-            gameSession.deck.add(
-                GameCard(
-                    gameSession = gameSession,
-                    card = savedCard,
-                    position = index
-                )
-            )
+
+            gameSession.deck.add(savedCard)
         }
     }
 
     fun handlePointsCard(
         gameSession: GameSession,
         player: GameSessionPlayer,
-        gameCard: GameCard
+        card: Card
     ): Turn {
-        val pointsCard = gameCard.card as PointsCard
+        val pointsCard = card as PointsCard
         player.score += pointsCard.value
 
         return Turn(
-            gameSession = gameSession,
+            gameSessionId = gameSession.id,
             player = player,
             card = pointsCard,
             pointsChange = pointsCard.value
@@ -63,10 +75,10 @@ class CardService(
     fun handleActionCard(
         gameSession: GameSession,
         player: GameSessionPlayer,
-        gameCard: GameCard,
+        card: Card,
         turnRequest: TurnRequest
     ): Turn {
-        val actionCard = gameCard.card as ActionCard
+        val actionCard = card as ActionCard
         var pointsChange = 0
 
         when (actionCard.actionType) {
@@ -95,12 +107,14 @@ class CardService(
             }
         }
 
+        cardRepository.markCardAsUsed(card.id)
+
         return Turn(
-            gameSession = gameSession,
+            gameSessionId = gameSession.id,
             player = player,
             card = actionCard,
             targetPlayer = gameSession.players.find { it.id == turnRequest.targetPlayerId },
             pointsChange = pointsChange
         ).also { gameSession.turns.add(it) }
     }
-} 
+}

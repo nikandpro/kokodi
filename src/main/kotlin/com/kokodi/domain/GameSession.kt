@@ -13,13 +13,13 @@ data class GameSession(
     @Enumerated(EnumType.STRING)
     var status: GameStatus = GameStatus.WAITING_FOR_PLAYERS,
 
-    @OneToMany(mappedBy = "gameSession", cascade = [CascadeType.ALL])
+    @OneToMany(mappedBy = "gameSessionId", cascade = [CascadeType.ALL])
     val players: MutableList<GameSessionPlayer> = mutableListOf(),
 
-    @OneToMany(mappedBy = "gameSession", cascade = [CascadeType.ALL])
-    val deck: MutableList<GameCard> = mutableListOf(),
+    @OneToMany(mappedBy = "gameSessionId", cascade = [CascadeType.ALL])
+    val deck: MutableList<Card> = mutableListOf(),
 
-    @OneToMany(mappedBy = "gameSession", cascade = [CascadeType.ALL])
+    @OneToMany(mappedBy = "gameSessionId", cascade = [CascadeType.ALL])
     val turns: MutableList<Turn> = mutableListOf(),
 
     var currentPlayerIndex: Int = 0,

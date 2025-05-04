@@ -22,7 +22,7 @@ data class GameSessionResponse(
                 nextPlayer = gameSession.players.getOrNull(gameSession.nextPlayerIndex)?.let {
                     PlayerResponse.fromGameSessionPlayer(it)
                 },
-                remainingCards = gameSession.deck.count { !it.isPlayed }
+                remainingCards = gameSession.deck.size
             )
         }
     }

@@ -1,13 +1,19 @@
 package com.kokodi.domain
 
-import github.nikandpro.com.kokodi.domain.ActionType
 import jakarta.persistence.*
+import github.nikandpro.com.kokodi.domain.ActionType
 
 @Entity
 @DiscriminatorValue("ACTION")
-open class ActionCard(
-    override val name: String,
-    override val value: Int,
+class ActionCard(
+    name: String,
+    @Column(name = "value", nullable = false)
+    var value: Int,
     @Enumerated(EnumType.STRING)
-    open val actionType: ActionType
-) : Card(name = name, value = value)
+    @Column(name = "action_type")
+    var actionType: ActionType
+) : Card(name = name) {
+    override fun toString(): String {
+        return "ActionCard(id=$id, name='$name', value=$value, type=ACTION, actionType=$actionType)"
+    }
+}

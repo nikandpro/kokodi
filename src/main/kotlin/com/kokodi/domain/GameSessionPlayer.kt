@@ -9,9 +9,8 @@ data class GameSessionPlayer(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_session_id")
-    val gameSession: GameSession,
+    @Column(name = "game_session_id")
+    val gameSessionId: Long,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

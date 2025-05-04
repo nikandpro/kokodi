@@ -3,19 +3,17 @@ package com.kokodi.service
 import com.kokodi.domain.*
 import com.kokodi.dto.TurnRequest
 import com.kokodi.exception.GameException
-import com.kokodi.repository.CardRepository
 import com.kokodi.repository.GameSessionRepository
 import com.kokodi.repository.UserRepository
-import github.nikandpro.com.kokodi.domain.ActionType
 import org.apache.coyote.BadRequestException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+
 
 @Service
 class GameService(
     private val gameSessionRepository: GameSessionRepository,
     private val userRepository: UserRepository,
-    private val cardRepository: CardRepository,
     private val cardService: CardService
 ) {
     @Transactional
@@ -24,16 +22,19 @@ class GameService(
             .orElseThrow { GameException("User not found") }
 
         val gameSession = GameSession()
-        val player = GameSessionPlayer(
-            gameSession = gameSession,
-            user = user,
-            joinOrder = 0
-        )
-        gameSession.players.add(player)
         gameSession.currentPlayerIndex = 0
         gameSession.nextPlayerIndex = 1
 
-        return gameSessionRepository.save(gameSession)
+        val savedGameSession = gameSessionRepository.save(gameSession)
+
+        val player = GameSessionPlayer(
+            gameSessionId = savedGameSession.id,
+            user = user,
+            joinOrder = 0
+        )
+        savedGameSession.players.add(player)
+
+        return gameSessionRepository.save(savedGameSession)
     }
 
     @Transactional
@@ -57,7 +58,7 @@ class GameService(
         }
 
         val player = GameSessionPlayer(
-            gameSession = gameSession,
+            gameSessionId = gameSession.id,
             user = user,
             joinOrder = gameSession.players.size
         )
@@ -117,18 +118,18 @@ class GameService(
             currentPlayer.isBlocked = false
             rotateToNextPlayer(gameSession)
             return Turn(
-                gameSession = gameSession,
+                gameSessionId = gameSession.id,
                 player = currentPlayer,
                 card = null,
                 pointsChange = 0
             ).also { gameSession.turns.add(it) }
         }
 
-        val topCard = gameSession.deck.firstOrNull { !it.isPlayed }
+        val topCard = gameSession.deck.firstOrNull()
             ?: throw GameException("No cards left in deck")
 
         try {
-            when (topCard.card) {
+            when (topCard) {
                 is PointsCard -> cardService.handlePointsCard(gameSession, currentPlayer, topCard)
                 is ActionCard -> cardService.handleActionCard(gameSession, currentPlayer, topCard, turnRequest)
                 else -> throw GameException("Unknown card type")
@@ -137,14 +138,11 @@ class GameService(
             throw GameException("Error processing card: ${e.message}")
         }
 
-        topCard.isPlayed = true
-
         if (currentPlayer.score >= 30) {
             gameSession.status = GameStatus.FINISHED
-        } else {
-            rotateToNextPlayer(gameSession)
         }
 
+        rotateToNextPlayer(gameSession)
         return gameSessionRepository.save(gameSession).turns.last()
     }
 
