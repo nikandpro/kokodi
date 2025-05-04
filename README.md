@@ -73,9 +73,3 @@ The application will be available at `http://localhost:8080`
    - Double Down: Doubles the player's current score (max 30)
 5. The game ends when a player reaches 30 points
 
-## Testing
-
-Run the tests with:
-```bash
-./gradlew test
-``` 
