@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 class GlobalExceptionHandler {
     @ExceptionHandler(GameException::class)
     fun handleGameException(ex: GameException): ResponseEntity<ErrorResponse> {
-        return ResponseEntity.badRequest().body(ErrorResponse(ex.message ?: "Unknown error"))
+        return ResponseEntity.badRequest().body(ErrorResponse(ex.message ?: "Game error"))
     }
 
     @ExceptionHandler(AuthException::class)

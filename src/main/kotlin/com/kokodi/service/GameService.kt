@@ -15,7 +15,8 @@ import org.springframework.transaction.annotation.Transactional
 class GameService(
     private val gameSessionRepository: GameSessionRepository,
     private val userRepository: UserRepository,
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val cardService: CardService
 ) {
     @Transactional
     fun createGame(username: String): GameSession {
@@ -88,7 +89,7 @@ class GameService(
         }
 
         gameSession.status = GameStatus.IN_PROGRESS
-        initializeDeck(gameSession)
+        cardService.initializeDeck(gameSession)
 
         gameSession.currentPlayerIndex = 0
         gameSession.nextPlayerIndex = 1
@@ -128,8 +129,8 @@ class GameService(
 
         try {
             when (topCard.card) {
-                is PointsCard -> handlePointsCard(gameSession, currentPlayer, topCard)
-                is ActionCard -> handleActionCard(gameSession, currentPlayer, topCard, turnRequest)
+                is PointsCard -> cardService.handlePointsCard(gameSession, currentPlayer, topCard)
+                is ActionCard -> cardService.handleActionCard(gameSession, currentPlayer, topCard, turnRequest)
                 else -> throw GameException("Unknown card type")
             }
         } catch (e: Exception) {
@@ -157,114 +158,6 @@ class GameService(
         }
 
         return gameSession
-    }
-
-    private fun initializeDeck(gameSession: GameSession) {
-        val cards = mutableListOf<Card>()
-
-        repeat(5) {
-            val card = PointsCard("Small Points", 2)
-            cardRepository.save(card)
-            cards.add(card)
-        }
-        repeat(3) {
-            val card = PointsCard("Medium Points", 5)
-            cardRepository.save(card)
-            cards.add(card)
-        }
-        repeat(2) {
-            val card = PointsCard("Large Points", 8)
-            cardRepository.save(card)
-            cards.add(card)
-        }
-
-        repeat(3) {
-            val card = ActionCard("Block", 1, ActionType.BLOCK)
-            cardRepository.save(card)
-            cards.add(card)
-        }
-        repeat(2) {
-            val card = ActionCard("Steal", 3, ActionType.STEAL)
-            cardRepository.save(card)
-            cards.add(card)
-        }
-        repeat(2) {
-            val card = ActionCard("Double Down", 2, ActionType.DOUBLE_DOWN)
-            cardRepository.save(card)
-            cards.add(card)
-        }
-
-        cards.shuffle()
-
-        cards.forEachIndexed { index, card ->
-            gameSession.deck.add(
-                GameCard(
-                    gameSession = gameSession,
-                    card = card,
-                    position = index
-                )
-            )
-        }
-    }
-
-    private fun handlePointsCard(
-        gameSession: GameSession,
-        player: GameSessionPlayer,
-        gameCard: GameCard
-    ): Turn {
-        val pointsCard = gameCard.card as PointsCard
-        player.score += pointsCard.value
-
-        return Turn(
-            gameSession = gameSession,
-            player = player,
-            card = pointsCard,
-            pointsChange = pointsCard.value
-        ).also { gameSession.turns.add(it) }
-    }
-
-    private fun handleActionCard(
-        gameSession: GameSession,
-        player: GameSessionPlayer,
-        gameCard: GameCard,
-        turnRequest: TurnRequest
-    ): Turn {
-        val actionCard = gameCard.card as ActionCard
-        var pointsChange = 0
-
-        when (actionCard.actionType) {
-            ActionType.BLOCK -> {
-                val nextPlayer = gameSession.players[gameSession.nextPlayerIndex]
-                nextPlayer.isBlocked = true
-            }
-
-            ActionType.STEAL -> {
-                if (turnRequest.targetPlayerId == null) {
-                    throw GameException("Target player ID is required for STEAL action")
-                }
-                val targetPlayer = gameSession.players.find { it.id == turnRequest.targetPlayerId }
-                    ?: throw GameException("Target player not found")
-
-                val stealAmount = minOf(actionCard.value, targetPlayer.score)
-                targetPlayer.score -= stealAmount
-                player.score += stealAmount
-                pointsChange = stealAmount
-            }
-
-            ActionType.DOUBLE_DOWN -> {
-                val newScore = player.score * 2
-                pointsChange = newScore - player.score
-                player.score = minOf(newScore, 30)
-            }
-        }
-
-        return Turn(
-            gameSession = gameSession,
-            player = player,
-            card = actionCard,
-            targetPlayer = gameSession.players.find { it.id == turnRequest.targetPlayerId },
-            pointsChange = pointsChange
-        ).also { gameSession.turns.add(it) }
     }
 
     private fun rotateToNextPlayer(gameSession: GameSession) {
