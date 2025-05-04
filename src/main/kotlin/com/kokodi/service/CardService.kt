@@ -4,13 +4,14 @@ import com.kokodi.domain.*
 import com.kokodi.dto.TurnRequest
 import com.kokodi.exception.GameException
 import com.kokodi.repository.CardRepository
+import com.kokodi.repository.GameSessionPlayerRepository
 import github.nikandpro.com.kokodi.domain.ActionType
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 
 @Service
 class CardService(
-    private val cardRepository: CardRepository
+    private val cardRepository: CardRepository,
+    private val gameSessionPlayerRepository: GameSessionPlayerRepository
 ) {
     fun initializeDeck(gameSession: GameSession) {
         val cards = mutableListOf<Card>()
@@ -51,7 +52,6 @@ class CardService(
 
         cards.forEach { card ->
             val savedCard = cardRepository.save(card)
-
             gameSession.deck.add(savedCard)
         }
     }
@@ -63,6 +63,8 @@ class CardService(
     ): Turn {
         val pointsCard = card as PointsCard
         player.score += pointsCard.value
+        gameSessionPlayerRepository.save(player)
+        cardRepository.markCardAsUsed(card.id)
 
         return Turn(
             gameSessionId = gameSession.id,
@@ -85,6 +87,7 @@ class CardService(
             ActionType.BLOCK -> {
                 val nextPlayer = gameSession.players[gameSession.nextPlayerIndex]
                 nextPlayer.isBlocked = true
+                gameSessionPlayerRepository.save(nextPlayer)
             }
 
             ActionType.STEAL -> {
@@ -98,17 +101,20 @@ class CardService(
                 targetPlayer.score -= stealAmount
                 player.score += stealAmount
                 pointsChange = stealAmount
+
+                gameSessionPlayerRepository.save(targetPlayer)
+                gameSessionPlayerRepository.save(player)
             }
 
             ActionType.DOUBLE_DOWN -> {
                 val newScore = player.score * 2
                 pointsChange = newScore - player.score
                 player.score = minOf(newScore, 30)
+                gameSessionPlayerRepository.save(player)
             }
         }
 
         cardRepository.markCardAsUsed(card.id)
-
         return Turn(
             gameSessionId = gameSession.id,
             player = player,
