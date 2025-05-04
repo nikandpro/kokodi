@@ -23,10 +23,8 @@ A Spring Boot application implementing a card game where players collect points 
    ```bash
    docker-compose up -d
    ```
-3. Build and run the application:
-   ```bash
-   ./gradlew bootRun
-   ```
+3. Add jwt.secret in application.yml
+For example: your-256-bit-secret-key-must-be-at-least-32-chars-long
 
 The application will be available at `http://localhost:8080`
 
